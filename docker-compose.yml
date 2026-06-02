@@ -1,3 +1,5 @@
+version: '3.9'
+
 services:
 
   web:
@@ -8,24 +10,37 @@ services:
       - "5000:5000"
 
     depends_on:
-      - postgres
-      - redis
+      db:
+        condition: service_healthy
 
     networks:
       - visitor-network
 
-  postgres:
-    image: postgres:15
+    restart: always
 
-    container_name: postgres-db
+    labels:
+      project: "visitor-management-system"
+      environment: "dev"
+
+  db:
+    image: postgres:15
+    container_name: visitor-db
 
     environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: admin123
       POSTGRES_DB: visitors
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
 
-    ports:
-      - "5432:5432"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U postgres"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
     volumes:
       - postgres-data:/var/lib/postgresql/data
@@ -33,13 +48,17 @@ services:
     networks:
       - visitor-network
 
+    restart: always
+
+    labels:
+      project: "visitor-management-system"
+      service: "database"
+
   redis:
     image: redis:7
+    container_name: visitor-redis
 
-    container_name: redis-cache
-
-    ports:
-      - "6379:6379"
+    command: redis-server --appendonly yes
 
     volumes:
       - redis-data:/data
@@ -47,10 +66,16 @@ services:
     networks:
       - visitor-network
 
-volumes:
-  postgres-data:
-  redis-data:
+    restart: always
+
+    labels:
+      project: "visitor-management-system"
+      service: "cache"
 
 networks:
   visitor-network:
     driver: bridge
+
+volumes:
+  postgres-data:
+  redis-data:
